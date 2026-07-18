@@ -1,0 +1,10 @@
+name: example
+count: 3
+enabled: true
+description: null
+tags:
+  - a
+  - b
+metadata:
+  owner: alice
+  version: 1

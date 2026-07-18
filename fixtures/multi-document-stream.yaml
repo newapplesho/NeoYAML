@@ -1,0 +1,5 @@
+service: a
+port: 80
+---
+service: b
+port: 8080
