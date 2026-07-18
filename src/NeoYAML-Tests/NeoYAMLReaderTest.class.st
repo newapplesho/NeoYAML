@@ -242,6 +242,35 @@ NeoYAMLReaderTest >> testReadMappingValueBlockSequenceAtSameIndent [
 	self assert: (NeoYAMLReader fromString: yaml) equals: expected
 ]
 
+{ #category : 'tests - line breaks' }
+NeoYAMLReaderTest >> testReadMappingWithCarriageReturnLineBreaks [
+	| yaml expected |
+	yaml := String cr join: { 'a: 1'. 'b: 2' }.
+	expected := Dictionary new.
+	expected at: 'a' put: 1.
+	expected at: 'b' put: 2.
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
+{ #category : 'tests - line breaks' }
+NeoYAMLReaderTest >> testReadMappingWithCarriageReturnLineFeedLineBreaks [
+	| yaml expected |
+	yaml := String crlf join: { 'a: 1'. 'b: 2' }.
+	expected := Dictionary new.
+	expected at: 'a' put: 1.
+	expected at: 'b' put: 2.
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
+{ #category : 'tests - line breaks' }
+NeoYAMLReaderTest >> testReadLiteralBlockScalarWithCarriageReturnLineBreaks [
+	| yaml expected |
+	yaml := String cr join: { 'text: |-'. '  a'. '  b' }.
+	expected := Dictionary new.
+	expected at: 'text' put: 'a' , String lf , 'b'.
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
 { #category : 'tests - flow style' }
 NeoYAMLReaderTest >> testReadFlowMappingWithNestedFlowSequenceValue [
 	| expected |

@@ -28,8 +28,19 @@ Class {
 
 { #category : 'scanning' }
 NeoYAMLScanner class >> scan: aString [
-	^ (self splitPreservingBlankLines: aString)
+	^ (self splitPreservingBlankLines: (self normalizeLineBreaks: aString))
 		collect: [ :line | self lineRecordFor: line ]
+]
+
+{ #category : 'scanning' }
+NeoYAMLScanner class >> normalizeLineBreaks: aString [
+	"Fold CRLF and lone CR into LF so line handling is break-style agnostic
+	(YAML 1.2.2 spec 5.4: all line breaks normalize to a single line feed)."
+	| lf crlf cr |
+	lf := String with: Character lf.
+	crlf := String with: Character cr with: Character lf.
+	cr := String with: Character cr.
+	^ (aString copyReplaceAll: crlf with: lf) copyReplaceAll: cr with: lf
 ]
 
 { #category : 'private' }

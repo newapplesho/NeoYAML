@@ -92,7 +92,7 @@ NeoYAMLReader class >> allFromString: aString [
 { #category : 'private' }
 NeoYAMLReader class >> splitDocuments: aString [
 	| lines docs current |
-	lines := aString substrings: (String with: Character lf).
+	lines := (NeoYAMLScanner normalizeLineBreaks: aString) substrings: (String with: Character lf).
 	docs := OrderedCollection new.
 	current := OrderedCollection new.
 	lines do: [ :line |
