@@ -167,6 +167,81 @@ NeoYAMLReaderTest >> testReadFlowMappingAsBlockSequenceItem [
 	self assert: (NeoYAMLReader fromString: '- {a: 1}') equals: (Array with: inner)
 ]
 
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadBlockSequenceOfBlockMappings [
+	| yaml item expected |
+	yaml := String lf join: {
+		'sub_agents:'.
+		'  - name: research'.
+		'    output_key: research_result' }.
+	item := Dictionary new.
+	item at: 'name' put: 'research'.
+	item at: 'output_key' put: 'research_result'.
+	expected := Dictionary new.
+	expected at: 'sub_agents' put: (Array with: item).
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadBlockSequenceItemSingleMappingEntry [
+	| item |
+	item := Dictionary new.
+	item at: 'a' put: 1.
+	self assert: (NeoYAMLReader fromString: '- a: 1') equals: (Array with: item)
+]
+
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadBlockSequenceItemMappingWithEmptyValue [
+	| yaml item |
+	yaml := String lf join: { '- name:'. '  output_key: x' }.
+	item := Dictionary new.
+	item at: 'name' put: nil.
+	item at: 'output_key' put: 'x'.
+	self assert: (NeoYAMLReader fromString: yaml) equals: (Array with: item)
+]
+
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadBlockSequenceItemExtraSpacesAfterDash [
+	| item |
+	item := Dictionary new.
+	item at: 'a' put: 1.
+	self assert: (NeoYAMLReader fromString: '-  a: 1') equals: (Array with: item)
+]
+
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadBlockSequenceOfBlockMappingsExtraSpaces [
+	| yaml item expected |
+	yaml := String lf join: {
+		'sub_agents:'.
+		'  -  name: research'.
+		'     output_key: research_result' }.
+	item := Dictionary new.
+	item at: 'name' put: 'research'.
+	item at: 'output_key' put: 'research_result'.
+	expected := Dictionary new.
+	expected at: 'sub_agents' put: (Array with: item).
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadMappingEmptyValueThenSiblingKey [
+	| yaml expected |
+	yaml := String lf join: { 'a:'. 'b: 2' }.
+	expected := Dictionary new.
+	expected at: 'a' put: nil.
+	expected at: 'b' put: 2.
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
+{ #category : 'tests - block style' }
+NeoYAMLReaderTest >> testReadMappingValueBlockSequenceAtSameIndent [
+	| yaml expected |
+	yaml := String lf join: { 'items:'. '- 1'. '- 2' }.
+	expected := Dictionary new.
+	expected at: 'items' put: #(1 2).
+	self assert: (NeoYAMLReader fromString: yaml) equals: expected
+]
+
 { #category : 'tests - flow style' }
 NeoYAMLReaderTest >> testReadFlowMappingWithNestedFlowSequenceValue [
 	| expected |

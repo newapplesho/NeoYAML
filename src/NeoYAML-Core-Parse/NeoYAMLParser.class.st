@@ -1,6 +1,7 @@
 "
-I am the ""parse + compose"" stage of NeoYAMLReader's scan / parse / compose /
-construct pipeline (see NeoYAMLReader's class comment). I walk the physical
+I am the ""parse"" stage of NeoYAMLReader's scan / parse / construct
+pipeline (see NeoYAMLReader's class comment): I perform the syntactic
+analysis, turning the flat line records into a tree. I walk the physical
 line records `NeoYAMLScanner` (in `NeoYAML-Core-Scan`) produced and turn them
 into a tree of `NeoYAMLNode`s: using indentation to recognize block
 mappings/sequences, a character-stream sub-parser for flow mappings/
@@ -147,9 +148,12 @@ NeoYAMLParser >> parseNodeAtIndent: indent [
 
 { #category : 'testing' }
 NeoYAMLParser >> currentTextStartsFlowCollection [
-	| text |
-	text := self currentText.
-	^ text notEmpty and: [ (text first = ${) or: [ text first = $[ ] ]
+	^ self startsFlowCollection: self currentText
+]
+
+{ #category : 'testing' }
+NeoYAMLParser >> startsFlowCollection: aText [
+	^ aText notEmpty and: [ (aText first = ${) or: [ aText first = $[ ] ]
 ]
 
 { #category : 'parsing' }
@@ -228,16 +232,43 @@ NeoYAMLParser >> parseSequenceNodeAtIndent: indent [
 
 { #category : 'parsing' }
 NeoYAMLParser >> parseSequenceItemNodeAt: indent [
-	| remainder |
-	remainder := self sequenceItemRemainder: self currentText.
+	| text offset remainder |
+	text := self currentText.
+	offset := self sequenceItemContentOffset: text.
+	remainder := text copyFrom: offset + 1 to: text size.
 	self advance.
+	(self remainderStartsCompactMapping: remainder)
+		ifTrue: [ ^ self parseCompactMappingFromInline: remainder atKeyIndent: indent + offset ].
 	^ self resolveValueNodeText: remainder atParentIndent: indent
 ]
 
+{ #category : 'testing' }
+NeoYAMLParser >> remainderStartsCompactMapping: remainder [
+	(self startsFlowCollection: remainder) ifTrue: [ ^ false ].
+	(self hasExplicitTag: remainder) ifTrue: [ ^ false ].
+	(self isBlockScalarHeader: remainder) ifTrue: [ ^ false ].
+	^ self looksLikeMappingEntry: remainder
+]
+
+{ #category : 'parsing' }
+NeoYAMLParser >> parseCompactMappingFromInline: remainderText atKeyIndent: keyIndent [
+	| entries |
+	entries := OrderedCollection new.
+	entries add: (self mappingEntryFromText: remainderText atIndent: keyIndent).
+	[ self atEnd not
+		and: [ self currentIndent = keyIndent
+			and: [ self looksLikeMappingEntry: self currentText ] ] ]
+		whileTrue: [ entries add: (self parseMappingEntryNodeAt: keyIndent) ].
+	^ NeoYAMLNode mapping: entries tag: nil
+]
+
 { #category : 'private' }
-NeoYAMLParser >> sequenceItemRemainder: aText [
-	aText = '-' ifTrue: [ ^ '' ].
-	^ aText copyFrom: 3 to: aText size
+NeoYAMLParser >> sequenceItemContentOffset: aText [
+	| i |
+	i := 2.
+	[ i <= aText size and: [ (aText at: i) = Character space ] ]
+		whileTrue: [ i := i + 1 ].
+	^ i - 1
 ]
 
 { #category : 'parsing' }
@@ -252,12 +283,18 @@ NeoYAMLParser >> parseMappingNodeAtIndent: indent [
 
 { #category : 'parsing' }
 NeoYAMLParser >> parseMappingEntryNodeAt: indent [
-	| text colonIndex keyText valueText |
+	| text |
 	text := self currentText.
+	self advance.
+	^ self mappingEntryFromText: text atIndent: indent
+]
+
+{ #category : 'parsing' }
+NeoYAMLParser >> mappingEntryFromText: text atIndent: indent [
+	| colonIndex keyText valueText |
 	colonIndex := self topLevelColonIndexIn: text.
 	keyText := text copyFrom: 1 to: colonIndex - 1.
 	valueText := self trimmed: (text copyFrom: colonIndex + 1 to: text size).
-	self advance.
 	^ (self valueNodeFor: keyText) -> (self resolveValueNodeText: valueText atParentIndent: indent)
 ]
 
@@ -267,8 +304,22 @@ NeoYAMLParser >> resolveValueNodeText: valueText atParentIndent: indent [
 		ifTrue: [ ^ self resolveTaggedValueNodeText: valueText ].
 	(self isBlockScalarHeader: valueText)
 		ifTrue: [ ^ self parseBlockScalarNodeWithHeader: valueText atParentIndent: indent ].
-	valueText isEmpty ifTrue: [ ^ self parseNodeAtIndent: self currentIndent ].
+	valueText isEmpty ifTrue: [ ^ self resolveEmptyValueNodeAtParentIndent: indent ].
 	^ self valueNodeFor: valueText
+]
+
+{ #category : 'parsing' }
+NeoYAMLParser >> resolveEmptyValueNodeAtParentIndent: indent [
+	(self emptyValueHasBlockChildAtParentIndent: indent)
+		ifTrue: [ ^ self parseNodeAtIndent: self currentIndent ].
+	^ self valueNodeFor: ''
+]
+
+{ #category : 'testing' }
+NeoYAMLParser >> emptyValueHasBlockChildAtParentIndent: indent [
+	self atEnd ifTrue: [ ^ false ].
+	self currentIndent > indent ifTrue: [ ^ true ].
+	^ self currentIndent = indent and: [ self looksLikeSequenceItem: self currentText ]
 ]
 
 { #category : 'testing' }
