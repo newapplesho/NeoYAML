@@ -4,8 +4,7 @@ A Pharo Smalltalk adapter library that converts between YAML text and the
 same object shapes (`Dictionary`, `Array`/`OrderedCollection`, `Association`,
 scalars) that [NeoJSON](https://github.com/svenvc/NeoJSON)'s
 `NeoJSONWriter`/`NeoJSONReader` use — in both directions, via `NeoYAMLWriter`
-and `NeoYAMLReader`. Sources live in [Tonel](https://github.com/pharo-vcs/tonel)
-format (`src/`): one `.class.st` per class, one `package.st` per package.
+and `NeoYAMLReader`.
 
 Both the YAML writer and reader are implemented from scratch, with no
 external YAML library dependency — NeoYAML depends only on NeoJSON itself.
