@@ -1,0 +1,26 @@
+service:
+  name: web-api
+  version: 2
+  enabled: true
+  weight: -1.5
+  scale: 1.5e2
+  buildId: !!str 100
+  retries: !!int '3'
+  description: |-
+    Handles inbound requests
+    and routes them to background workers.
+  metadata: {owner: 'platform-team', priority: 1}
+  tags: [production, "east-1", 'blue-green']
+  endpoints:
+    -
+      path: /health
+      methods: [GET]
+      auth: null
+    -
+      path: /users
+      methods:
+        - GET
+        - POST
+      auth:
+        type: bearer
+        scopes: [read, write]

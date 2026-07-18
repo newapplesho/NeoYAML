@@ -1,0 +1,19 @@
+SmalltalkCISpec {
+  #loading : [
+    SCIMetacelloLoadSpec {
+      #baseline : 'NeoYAML',
+      #directory : 'src',
+      #load : [ 'default' ],
+      #platforms : [ #pharo ]
+    }
+  ],
+  #testing : {
+    #coverage : {
+      #packages : [ 'NeoYAML*' ]
+    },
+    #include : {
+      #packages : [ 'NeoYAML*' ]
+    },
+    #packages : [ 'NeoYAML-*' ]
+  }
+}

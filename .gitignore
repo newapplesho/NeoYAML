@@ -29,3 +29,9 @@ SqueakDebug.log
 # Metacello-github cache
 /github-cache
 github-*.zip
+
+# IDE
+.idea
+
+# local Pharo image + VM (make setup)
+/pharo-local/

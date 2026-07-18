@@ -1,0 +1,1 @@
+Package { #name : 'NeoYAML-Core' }
