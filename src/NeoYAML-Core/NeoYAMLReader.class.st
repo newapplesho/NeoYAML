@@ -4,18 +4,19 @@ I parse YAML text back into the same object shapes NeoJSON works with:
 scalars (`String`, `Integer`, `Float`, `Boolean`, `nil`).
 
 I am implemented from scratch, without any external YAML library, as a thin
-facade over the **scan / parse+compose / construct** pipeline real YAML
-implementations use (see e.g. libyaml or PyYAML). Scan and parse+compose
+facade over the **scan / parse / construct** pipeline real YAML
+implementations use (see e.g. libyaml or PyYAML). Scan and parse
 each get their own sub-package, since a scanner and a node-tree builder are
 reusable, self-contained units; construct is a small, non-reusable finishing
-step over the exact `NeoYAMLNode` shape parse+compose produces, so its class
+step over the exact `NeoYAMLNode` shape parse produces, so its class
 (`NeoYAMLConstructor`) lives alongside me, in `NeoYAML-Core`, rather than in
 a fourth sub-package of its own:
 
 1. **Scan** (`NeoYAMLScanner`, package `NeoYAML-Core-Scan`) turns source
    text into physical line records (`indent -> content`), preserving blank
    lines — it does not decide what anything *means*.
-2. **Parse + compose** (`NeoYAMLParser`, package `NeoYAML-Core-Parse`) walks
+2. **Parse** (`NeoYAMLParser`, package `NeoYAML-Core-Parse`) — the syntactic
+   analysis: it walks
    the line records, using indentation to recognize block mappings/
    sequences, a character-stream sub-parser for flow mappings/sequences,
    and builds a tree of `NeoYAMLNode`s (also in `NeoYAML-Core-Parse`) —

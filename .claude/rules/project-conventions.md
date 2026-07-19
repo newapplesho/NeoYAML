@@ -22,7 +22,7 @@ this file.
 |---------|------|
 | `NeoYAML-Core` | `NeoYAMLWriter` (object → YAML text); `NeoYAMLReader`, a thin facade over the scan/parse packages below; `NeoYAMLConstructor`, the "construct" stage: node tree → final Dictionary/Array/scalar shapes |
 | `NeoYAML-Core-Scan` | `NeoYAMLScanner` — the "scan" stage: source text → blank-line-preserving physical line records |
-| `NeoYAML-Core-Parse` | `NeoYAMLParser`/`NeoYAMLNode` — the "parse + compose" stage: line records → an untyped node tree |
+| `NeoYAML-Core-Parse` | `NeoYAMLParser`/`NeoYAMLNode` — the "parse" stage (syntactic analysis): line records → an untyped node tree |
 | `BaselineOfNeoYAML` | Metacello baseline |
 | `NeoYAML-Tests` | SUnit tests |
 

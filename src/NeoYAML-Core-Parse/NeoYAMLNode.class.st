@@ -1,6 +1,6 @@
 "
-I am the ""compose"" stage's output in NeoYAMLReader's scan / parse /
-compose / construct pipeline (see NeoYAMLReader's class comment): an
+I am the ""parse"" stage's output in NeoYAMLReader's scan / parse /
+construct pipeline (see NeoYAMLReader's class comment): an
 untyped tree node capturing everything the parser learned about one piece
 of YAML *before* deciding what final Smalltalk object it becomes.
 

@@ -1,6 +1,6 @@
 "
-I am the ""construct"" stage of NeoYAMLReader's scan / parse / compose /
-construct pipeline (see NeoYAMLReader's class comment). Given the
+I am the ""construct"" stage of NeoYAMLReader's scan / parse / construct
+pipeline (see NeoYAMLReader's class comment). Given the
 `NeoYAMLNode` tree `NeoYAMLParser` (in `NeoYAML-Core-Parse`) built, I decide
 each scalar's final Smalltalk type: a plain scalar gets the null/boolean/
 number core-schema coercion, a quoted scalar always stays a String, an

@@ -1,7 +1,7 @@
 "
-I am the ""scan"" stage of NeoYAMLReader's scan / parse / compose / construct
+I am the ""scan"" stage of NeoYAMLReader's scan / parse / construct
 pipeline (see NeoYAMLReader's class comment; NeoYAMLParser in
-NeoYAML-Core-Parse is the ""parse + compose"" stage that calls me). I turn
+NeoYAML-Core-Parse is the ""parse"" stage that calls me). I turn
 raw YAML source text
 into an ordered list of physical line records — `indent -> content`
 Associations, one per line, in original order — without interpreting their
