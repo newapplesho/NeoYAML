@@ -37,11 +37,11 @@ CI-verified before the next started)
 5. **Multi-document streams** (`---` / `...`) and **exponent-form floats**
    (`1e10`, `1.5e-3`) — both directions.
 
-6. **Scan / parse+compose / construct pipeline** — `NeoYAMLReader` was
+6. **Scan / parse / construct pipeline** — `NeoYAMLReader` was
    rebuilt from a single-pass, string-based reader into the staged
    architecture real YAML implementations use (see e.g. libyaml, PyYAML):
    `NeoYAMLScanner` turns source text into blank-line-preserving physical
-   line records; `NeoYAMLParser`'s parse+compose stage builds a
+   line records; `NeoYAMLParser`'s parse stage builds a
    `NeoYAMLNode` tree capturing structure/style/tag without yet deciding a
    scalar's final type; `NeoYAMLConstructor` performs that final
    null/boolean/number/tag coercion. This fixed two real gaps the old
@@ -52,7 +52,7 @@ CI-verified before the next started)
    reduced to a thin facade in `NeoYAML-Core` that calls `NeoYAMLParser`
    then `NeoYAMLConstructor`. `NeoYAMLConstructor` stays in `NeoYAML-Core`
    rather than getting a fourth package of its own: it is a small
-   finishing step over the exact `NeoYAMLNode` shape parse+compose
+   finishing step over the exact `NeoYAMLNode` shape parse
    produces, with no reuse value on its own. This makes Scan → Parse's
    one-way dependency visible in the Metacello baseline's package graph,
    not just in prose, without introducing a package for a class that

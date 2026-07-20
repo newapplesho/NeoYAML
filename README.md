@@ -51,10 +51,13 @@ the corresponding JSON — `NeoYAMLReader` covers exactly the block-style
 subset `NeoYAMLWriter` emits (see [ROADMAP.md](ROADMAP.md) for what's out
 of scope).
 
+For more examples — multi-line strings, multi-document streams, round-tripping,
+and a method summary — see [docs/usage.md](docs/usage.md).
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md) for the layered structure
-(scan / parse+compose / construct), the read/write flows, and a reading
+(scan / parse / construct), the read/write flows, and a reading
 guide to the classes.
 
 ## Packages
@@ -63,7 +66,7 @@ guide to the classes.
 |---------|------|
 | `NeoYAML-Core` | `NeoYAMLWriter` (object → YAML text); `NeoYAMLReader`, a thin facade over the two packages below; `NeoYAMLConstructor`, turning a node tree into the final Dictionary/Array/scalar shapes |
 | `NeoYAML-Core-Scan` | `NeoYAMLScanner` — turns YAML source text into blank-line-preserving physical line records |
-| `NeoYAML-Core-Parse` | `NeoYAMLParser`/`NeoYAMLNode` — the parse+compose stage, building an untyped node tree |
+| `NeoYAML-Core-Parse` | `NeoYAMLParser`/`NeoYAMLNode` — the parse stage, building an untyped node tree |
 | `BaselineOfNeoYAML` | Metacello baseline |
 | `NeoYAML-Tests` | SUnit tests |
 
@@ -77,11 +80,3 @@ inside a package directory.
 
 See [ROADMAP.md](ROADMAP.md) for what's done, planned, and explicitly out
 of scope.
-
-## Development rules
-
-See [`CLAUDE.md`](CLAUDE.md) and [`.claude/rules/README.md`](.claude/rules/README.md)
-for the coding rules Claude Code (and contributors) follow in this repo —
-split into generic rules (Pharo syntax, testing, YAML syntax knowledge) that
-are reusable across projects, and `project-conventions.md`, which is specific
-to this one.
