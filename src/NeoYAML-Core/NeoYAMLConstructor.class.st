@@ -22,23 +22,33 @@ Class {
 
 { #category : 'construct' }
 NeoYAMLConstructor class >> construct: node [
-	node isMapping ifTrue: [ ^ self constructMapping: node ].
-	node isSequence ifTrue: [ ^ self constructSequence: node ].
+	^ self construct: node mapClass: Dictionary listClass: Array
+]
+
+{ #category : 'construct' }
+NeoYAMLConstructor class >> construct: node mapClass: mapClass listClass: listClass [
+	node isMapping
+		ifTrue: [ ^ self constructMapping: node mapClass: mapClass listClass: listClass ].
+	node isSequence
+		ifTrue: [ ^ self constructSequence: node mapClass: mapClass listClass: listClass ].
 	^ self constructScalar: node
 ]
 
 { #category : 'construct' }
-NeoYAMLConstructor class >> constructMapping: node [
+NeoYAMLConstructor class >> constructMapping: node mapClass: mapClass listClass: listClass [
 	| dict |
-	dict := Dictionary new.
+	dict := mapClass new.
 	node value do: [ :assoc |
-		dict at: (self construct: assoc key) put: (self construct: assoc value) ].
+		dict
+			at: (self construct: assoc key mapClass: mapClass listClass: listClass)
+			put: (self construct: assoc value mapClass: mapClass listClass: listClass) ].
 	^ dict
 ]
 
 { #category : 'construct' }
-NeoYAMLConstructor class >> constructSequence: node [
-	^ (node value collect: [ :item | self construct: item ]) asArray
+NeoYAMLConstructor class >> constructSequence: node mapClass: mapClass listClass: listClass [
+	^ listClass withAll: (node value collect: [ :item |
+		self construct: item mapClass: mapClass listClass: listClass ])
 ]
 
 { #category : 'construct' }

@@ -47,7 +47,16 @@ it would otherwise look like — e.g. `!!str 123` reads as the string
 `NeoYAMLParser` and the resulting node tree to `NeoYAMLConstructor`.
 `allFromString:` reads a `---`/`...`-separated multi-document stream and
 returns an Array of documents (mirrors `NeoJSONReader>>upToEnd` for JSON
-Lines).
+Lines). `toJSON:` is the end-to-end mirror of `NeoYAMLWriter
+class>>writeJSON:`: it reads YAML text via `fromString:`, then hands the
+result to `NeoJSONWriter class>>toString:` to produce JSON text.
+
+`NeoJSONReader class>>fromYAML:` (defined in `NeoJSONReader.extension.st`,
+in this same package) is a thin alias for `fromString:`, so reading YAML is
+discoverable directly from `NeoJSONReader` without needing to know
+`NeoYAMLReader` exists. `NeoJSONObject class>>fromYAML:` instead reads YAML
+into `NeoJSONObject`/`NeoJSONArray` (via `fromString:mapClass:listClass:`),
+so the result supports NeoJSON's message-style field access (e.g. `obj name`).
 
 Example:
 	NeoYAMLReader fromString: 'name: Pharo' , String lf , 'tags: [smalltalk, yaml]'.
@@ -81,13 +90,27 @@ Class {
 
 { #category : 'convenience' }
 NeoYAMLReader class >> fromString: aString [
+	^ self fromString: aString mapClass: Dictionary listClass: Array
+]
+
+{ #category : 'convenience' }
+NeoYAMLReader class >> fromString: aString mapClass: mapClass listClass: listClass [
+	"Read one YAML document, building mappings as mapClass and sequences as
+	 listClass. Defaults are Dictionary/Array; pass NeoJSONObject/NeoJSONArray
+	 (see NeoJSONObject class>>fromYAML:) for NeoJSON's message-accessible shapes."
 	^ (NeoYAMLParser on: aString) parseNode
-		ifNotNil: [ :node | NeoYAMLConstructor construct: node ]
+		ifNotNil: [ :node |
+			NeoYAMLConstructor construct: node mapClass: mapClass listClass: listClass ]
 ]
 
 { #category : 'convenience' }
 NeoYAMLReader class >> allFromString: aString [
 	^ ((self splitDocuments: aString) collect: [ :doc | self fromString: doc ]) asArray
+]
+
+{ #category : 'convenience' }
+NeoYAMLReader class >> toJSON: aYAMLString [
+	^ NeoJSONWriter toString: (self fromString: aYAMLString)
 ]
 
 { #category : 'private' }
