@@ -124,29 +124,43 @@ flowchart LR
 
 ```ebnf
 node        = flow-collection    (* 行が { または [ で始まる  *)
-            | tagged-node        (* 行が !! で始まる           *)
-            | block-scalar       (* 行が | または > のヘッダ   *)
-            | sequence           (* 行が "- " で始まる         *)
-            | mapping            (* 行に key: がある           *)
-            | scalar ;           (* いずれにも当たらない       *)
+            | tagged-node        (* 行が !! で始まる          *)
+            | block-scalar       (* 行が | または > のヘッダ  *)
+            | sequence           (* 行が "-" 単独か "- "      *)
+            | mapping            (* 行に "key:" がある        *)
+            | scalar ;           (* いずれにも当たらない      *)
+
+sequence    = seq-item { seq-item } ;   (* すべて同じインデント *)
+seq-item    = "-" [ " " node ] ;        (* 値が無ければ空スカラー *)
+
+mapping     = map-entry { map-entry } ; (* すべて同じインデント *)
+map-entry   = scalar ":" node ;         (* node は同じ行、または次行以降の深いインデント *)
 
 flow-collection = flow-mapping | flow-sequence ;
-flow-mapping    = "{" [ pair { "," pair } ] "}" ;
-flow-sequence   = "[" [ node { "," node } ] "]" ;
-pair            = node ":" node ;
+flow-mapping    = "{" [ flow-pair { "," flow-pair } ] "}" ;
+flow-sequence   = "[" [ flow-value { "," flow-value } ] "]" ;
+flow-pair       = flow-value ":" flow-value ;
+flow-value      = flow-mapping | flow-sequence | scalar ;
 
-tagged-node     = "!!" tag-name [ value ] ;
+tagged-node = "!!" tag-name [ scalar | flow-collection ] ;
 
-block-scalar    = ( "|" | ">" ) [ "-" | "+" ] newline indented-lines ;
+block-scalar = ( "|" | ">" ) [ "-" | "+" ] newline indented-lines ;
 
-sequence        = seq-item { seq-item } ;    (* すべて同じインデント *)
-seq-item        = "- " node ;
-
-mapping         = map-entry { map-entry } ;  (* すべて同じインデント *)
-map-entry       = key ":" ( value | newline deeper-node ) ;
-
-scalar          = plain | single-quoted | double-quoted ;
+scalar      = plain | single-quoted | double-quoted ;
 ```
+
+文法中の `tag-name`・`plain`・`single-quoted`・`double-quoted`・`indented-lines`・
+`newline` は**終端記号(字句)**です。それ以上分解しない、いちばん細かい単位なので、
+文法規則としては定義せず、そのまま扱います。それぞれの意味は次のとおりです。
+
+| 終端記号 | 意味 |
+|---|---|
+| `plain` | 引用符なしのスカラー(例:`hello`、`123`) |
+| `single-quoted` | 単一引用符の文字列(`'...'`) |
+| `double-quoted` | 二重引用符の文字列(`"..."`) |
+| `tag-name` | `!!` の後ろの名前(`!!str` の `str`) |
+| `indented-lines` | ブロックスカラーの本文行(字下げされた複数行) |
+| `newline` | 改行 |
 
 `node`選択肢の右側のコメントが、その規則を選ぶ先頭トークン(先読み)です。上から
 順に試すため、`-5`のようにスカラーとシーケンスの両方に見えうる入力も、正しい

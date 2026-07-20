@@ -129,27 +129,42 @@ and uses the first one whose leading token matches:
 node        = flow-collection    (* line starts with { or [   *)
             | tagged-node        (* line starts with !!        *)
             | block-scalar       (* line is a | or > header    *)
-            | sequence           (* line starts with "- "      *)
-            | mapping            (* line contains key:         *)
+            | sequence           (* "-" alone, or "- " ...     *)
+            | mapping            (* line contains "key:"       *)
             | scalar ;           (* none of the above          *)
 
+sequence    = seq-item { seq-item } ;   (* all at the same indentation *)
+seq-item    = "-" [ " " node ] ;        (* empty item = empty scalar *)
+
+mapping     = map-entry { map-entry } ; (* all at the same indentation *)
+map-entry   = scalar ":" node ;         (* node is inline or a deeper-indented block *)
+
 flow-collection = flow-mapping | flow-sequence ;
-flow-mapping    = "{" [ pair { "," pair } ] "}" ;
-flow-sequence   = "[" [ node { "," node } ] "]" ;
-pair            = node ":" node ;
+flow-mapping    = "{" [ flow-pair { "," flow-pair } ] "}" ;
+flow-sequence   = "[" [ flow-value { "," flow-value } ] "]" ;
+flow-pair       = flow-value ":" flow-value ;
+flow-value      = flow-mapping | flow-sequence | scalar ;
 
-tagged-node     = "!!" tag-name [ value ] ;
+tagged-node = "!!" tag-name [ scalar | flow-collection ] ;
 
-block-scalar    = ( "|" | ">" ) [ "-" | "+" ] newline indented-lines ;
+block-scalar = ( "|" | ">" ) [ "-" | "+" ] newline indented-lines ;
 
-sequence        = seq-item { seq-item } ;    (* all at the same indentation *)
-seq-item        = "- " node ;
-
-mapping         = map-entry { map-entry } ;  (* all at the same indentation *)
-map-entry       = key ":" ( value | newline deeper-node ) ;
-
-scalar          = plain | single-quoted | double-quoted ;
+scalar      = plain | single-quoted | double-quoted ;
 ```
+
+In the grammar, `tag-name`, `plain`, `single-quoted`, `double-quoted`,
+`indented-lines`, and `newline` are **terminals**: the smallest, indivisible
+tokens. They are not expanded into further rules; they are used as-is. Each one
+means:
+
+| Terminal | Meaning |
+|---|---|
+| `plain` | an unquoted scalar (e.g. `hello`, `123`) |
+| `single-quoted` | a single-quoted string (`'...'`) |
+| `double-quoted` | a double-quoted string (`"..."`) |
+| `tag-name` | the name after `!!` (`str` in `!!str`) |
+| `indented-lines` | the body lines of a block scalar (indented) |
+| `newline` | a line break |
 
 The comment beside each `node` alternative is the leading token (the lookahead)
 that selects it. Because the alternatives are tried top to bottom, input that
