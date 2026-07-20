@@ -145,6 +145,40 @@ NeoYAMLReader allFromString: 'id: 1', String lf, '---', String lf, 'id: 2'.
 
 returns an `Array` of two `Dictionary` objects.
 
+## NeoJSON-side shortcuts
+
+The same conversions are also reachable directly from NeoJSON's own classes,
+so you do not have to name `NeoYAMLWriter`/`NeoYAMLReader`:
+
+```smalltalk
+NeoJSONWriter toYAML: aDictionary.      "same as: NeoYAMLWriter write: aDictionary"
+NeoJSONReader fromYAML: 'key: value'.   "same as: NeoYAMLReader fromString: 'key: value'"
+```
+
+`NeoYAMLReader toJSON:` is the reverse of `writeJSON:` — it reads YAML and
+produces JSON text (via `NeoJSONWriter`):
+
+```smalltalk
+NeoYAMLReader toJSON: ('a: 1', String lf, 'b: true').   "=> JSON text: {\"a\":1,\"b\":true}"
+```
+
+### Working with `NeoJSONObject`
+
+`NeoJSONObject fromYAML:` reads YAML into `NeoJSONObject`/`NeoJSONArray`, so the
+result supports NeoJSON's message-style field access; `NeoJSONWriter toYAML:`
+accepts a `NeoJSONObject` back:
+
+```smalltalk
+| obj |
+obj := NeoJSONObject fromYAML: 'name: Pharo', String lf, 'nested:', String lf, '  n: 1'.
+obj name.                    "=> 'Pharo'"
+obj nested n.                "=> 1  (nested mappings are NeoJSONObjects too)"
+NeoJSONWriter toYAML: obj.   "=> back to YAML text"
+```
+
+Mappings become `NeoJSONObject` and sequences become `NeoJSONArray`, mirroring
+`NeoJSONObject fromString:` for JSON.
+
 ## Round-tripping
 
 Because both directions share the NeoJSON object model, writing then reading
@@ -170,3 +204,7 @@ restored = original.   "=> true"
 | write | `NeoYAMLWriter writeAll:` | collection of objects | multi-document YAML `String` |
 | read | `NeoYAMLReader fromString:` | YAML `String` (one document) | object |
 | read | `NeoYAMLReader allFromString:` | YAML `String` (multi-document) | `Array` of objects |
+| write | `NeoJSONWriter toYAML:` | NeoJSON-shaped object | YAML `String` (alias of `write:`) |
+| read | `NeoJSONReader fromYAML:` | YAML `String` | object (alias of `fromString:`) |
+| read | `NeoJSONObject fromYAML:` | YAML `String` | `NeoJSONObject` (message-accessible) |
+| read | `NeoYAMLReader toJSON:` | YAML `String` | JSON `String` |

@@ -583,3 +583,20 @@ NeoYAMLReaderTest >> testReadJSONWrittenAsYAMLRoundTrips [
 	resultBack := NeoYAMLReader fromString: yaml.
 	self assert: resultBack equals: original
 ]
+
+{ #category : 'tests - json adapting' }
+NeoYAMLReaderTest >> testToJSONConvertsYAMLTextToEquivalentJSONText [
+	| yaml json |
+	yaml := 'a: 1' , String lf , 'b: true'.
+	json := NeoYAMLReader toJSON: yaml.
+	self assert: (NeoJSONReader fromString: json) equals: (NeoYAMLReader fromString: yaml)
+]
+
+{ #category : 'tests - json adapting' }
+NeoYAMLReaderTest >> testWriteJSONThenToJSONRoundTripsThroughYAML [
+	| original yaml jsonBack |
+	original := NeoJSONReader fromString: '{"a":1,"b":true,"c":[1,2],"d":{"x":"y"}}'.
+	yaml := NeoYAMLWriter write: original.
+	jsonBack := NeoYAMLReader toJSON: yaml.
+	self assert: (NeoJSONReader fromString: jsonBack) equals: original
+]

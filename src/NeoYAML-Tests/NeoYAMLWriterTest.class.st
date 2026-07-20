@@ -208,3 +208,11 @@ NeoYAMLWriterTest >> testWriteAllSeparatesDocumentsWithMarker [
 	expected := 'a: 1' , String lf , '---' , String lf , 'b: 2' , String lf.
 	self assert: (NeoYAMLWriter writeAll: (Array with: first with: second)) equals: expected
 ]
+
+{ #category : 'tests - neojson object' }
+NeoYAMLWriterTest >> testWriteNeoJSONObjectAsMapping [
+	| obj |
+	obj := NeoJSONObject new.
+	obj at: 'name' put: 'Pharo'.
+	self assert: (NeoYAMLWriter write: obj) equals: 'name: Pharo' , String lf
+]

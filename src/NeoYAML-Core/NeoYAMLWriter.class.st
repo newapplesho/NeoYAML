@@ -19,6 +19,11 @@ still uses the double-quoted/escaped form.
 separated by `---`, matching what `NeoYAMLReader class>>allFromString:`
 expects.
 
+`NeoJSONWriter class>>toYAML:` (defined in `NeoJSONWriter.extension.st`, in
+this same package) is a thin alias for `write:`, so YAML output is
+discoverable directly from `NeoJSONWriter` without needing to know
+`NeoYAMLWriter` exists.
+
 Known limitations: I do not emit anchors/aliases, tags, folded (`>`) block
 scalars, or flow-style mappings/sequences (except for the empty collection,
 which has no block form). A block scalar value containing a blank line is
@@ -77,7 +82,7 @@ NeoYAMLWriter >> write: anObject on: aStream indent: level [
 	anObject isString ifTrue: [ ^ aStream nextPutAll: (self scalarFor: anObject) ].
 	(anObject isKindOf: Association)
 		ifTrue: [ ^ self writeAssociation: anObject on: aStream indent: level ].
-	(anObject isKindOf: Dictionary)
+	anObject isDictionary
 		ifTrue: [ ^ self writeMapping: anObject on: aStream indent: level ].
 	(anObject isKindOf: SequenceableCollection)
 		ifTrue: [ ^ self writeSequence: anObject on: aStream indent: level ].
@@ -197,7 +202,7 @@ NeoYAMLWriter >> writeAssociation: anAssociation on: aStream indent: level [
 NeoYAMLWriter >> isBlockValue: anObject [
 	anObject isString ifTrue: [ ^ false ].
 	(anObject isKindOf: Association) ifTrue: [ ^ true ].
-	(anObject isKindOf: Dictionary) ifTrue: [ ^ anObject notEmpty ].
+	anObject isDictionary ifTrue: [ ^ anObject notEmpty ].
 	(anObject isKindOf: SequenceableCollection) ifTrue: [ ^ anObject notEmpty ].
 	^ false
 ]
