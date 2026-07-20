@@ -38,8 +38,9 @@ NeoJSONObjectExtensionTest >> testFromYAMLSequenceIsNeoJSONArray [
 
 { #category : 'tests' }
 NeoJSONObjectExtensionTest >> testNeoJSONObjectRoundTripsThroughYAML [
+	"Includes a nested object so the block-mapping write path is exercised."
 	| original yaml back |
-	original := NeoJSONObject fromString: '{"name":"Pharo","tags":["a","b"]}'.
+	original := NeoJSONObject fromString: '{"name":"Pharo","nested":{"n":1},"tags":["a","b"]}'.
 	yaml := NeoJSONWriter toYAML: original.
 	back := NeoJSONObject fromYAML: yaml.
 	self assert: back equals: original

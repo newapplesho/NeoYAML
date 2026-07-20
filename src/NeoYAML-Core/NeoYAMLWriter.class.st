@@ -202,7 +202,7 @@ NeoYAMLWriter >> writeAssociation: anAssociation on: aStream indent: level [
 NeoYAMLWriter >> isBlockValue: anObject [
 	anObject isString ifTrue: [ ^ false ].
 	(anObject isKindOf: Association) ifTrue: [ ^ true ].
-	(anObject isKindOf: Dictionary) ifTrue: [ ^ anObject notEmpty ].
+	anObject isDictionary ifTrue: [ ^ anObject notEmpty ].
 	(anObject isKindOf: SequenceableCollection) ifTrue: [ ^ anObject notEmpty ].
 	^ false
 ]
