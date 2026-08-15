@@ -600,3 +600,95 @@ NeoYAMLReaderTest >> testWriteJSONThenToJSONRoundTripsThroughYAML [
 	jsonBack := NeoYAMLReader toJSON: yaml.
 	self assert: (NeoJSONReader fromString: jsonBack) equals: original
 ]
+
+{ #category : 'tests - scalars' }
+NeoYAMLReaderTest >> testReadDoubleQuotedTabEscape [
+	| expected |
+	expected := Dictionary new.
+	expected at: 'k' put: ('a' , (String with: Character tab) , 'b').
+	self assert: (NeoYAMLReader fromString: 'k: "a\tb"') equals: expected
+]
+
+{ #category : 'tests - scalars' }
+NeoYAMLReaderTest >> testReadDoubleQuotedCarriageReturnEscape [
+	| expected |
+	expected := Dictionary new.
+	expected at: 'k' put: ('a' , (String with: Character cr) , 'b').
+	self assert: (NeoYAMLReader fromString: 'k: "a\rb"') equals: expected
+]
+
+{ #category : 'tests - flow' }
+NeoYAMLReaderTest >> testReadFlowMappingIgnoresTrailingComma [
+	| expected |
+	expected := Dictionary new.
+	expected at: 'a' put: 1.
+	self assert: (NeoYAMLReader fromString: '{a: 1,}') equals: expected
+]
+
+{ #category : 'tests - flow' }
+NeoYAMLReaderTest >> testReadFlowSequenceIgnoresTrailingComma [
+	self
+		assert: (NeoYAMLReader fromString: '[a, b,]')
+		equals: (Array with: 'a' with: 'b')
+]
+
+{ #category : 'tests - multi-document' }
+NeoYAMLReaderTest >> testAllFromStringPreservesBlankLineInBlockScalar [
+	"A blank line inside a block scalar must survive document splitting, so
+	 allFromString: and fromString: agree on the same single-document source."
+	| source |
+	source := 'k: |+' , String lf , '  line1' , String lf , '' , String lf , '  line3'.
+	self
+		assert: ((NeoYAMLReader allFromString: source) at: 1)
+		equals: (NeoYAMLReader fromString: source)
+]
+
+{ #category : 'tests - scalars' }
+NeoYAMLReaderTest >> testReadCoreSchemaScalarVariants [
+	"YAML 1.2 core schema: plus sign, bare leading/trailing dot, explicit
+	 positive exponent, and uppercase bool/null spellings."
+	self assert: (NeoYAMLReader fromString: 'k: +5') values anyOne equals: 5.
+	self assert: (NeoYAMLReader fromString: 'k: .5') values anyOne equals: 0.5.
+	self assert: (NeoYAMLReader fromString: 'k: 5.') values anyOne equals: 5.0.
+	self assert: (NeoYAMLReader fromString: 'k: 1e+3') values anyOne equals: 1000.0.
+	self assert: (NeoYAMLReader fromString: 'k: 5.e3') values anyOne equals: 5000.0.
+	self assert: (NeoYAMLReader fromString: 'k: True') values anyOne equals: true.
+	self assert: (NeoYAMLReader fromString: 'k: TRUE') values anyOne equals: true.
+	self assert: (NeoYAMLReader fromString: 'k: False') values anyOne equals: false.
+	self assert: (NeoYAMLReader fromString: 'k: NULL') values anyOne isNil.
+	self assert: (NeoYAMLReader fromString: 'k: Null') values anyOne isNil
+]
+
+{ #category : 'tests - document markers' }
+NeoYAMLReaderTest >> testReadDocumentWithTrailingEndMarker [
+	"A single document may end with `...`; it must still read as the mapping,
+	 not raise on the trailing marker."
+	| expected |
+	expected := Dictionary new.
+	expected at: 'a' put: 1.
+	self assert: (NeoYAMLReader fromString: 'a: 1' , String lf , '...') equals: expected
+]
+
+{ #category : 'tests - document markers' }
+NeoYAMLReaderTest >> testReadDocumentWithLeadingStartMarker [
+	| expected |
+	expected := Dictionary new.
+	expected at: 'a' put: 1.
+	self assert: (NeoYAMLReader fromString: '---' , String lf , 'a: 1') equals: expected
+]
+
+{ #category : 'tests - document markers' }
+NeoYAMLReaderTest >> testReadTrulyLeftoverContentRaisesError [
+	"Two unmarked top-level constructs are genuine leftover: fail loud."
+	self should: [ NeoYAMLReader fromString: 'hello' , String lf , 'world' ] raise: Error
+]
+
+{ #category : 'tests - flow' }
+NeoYAMLReaderTest >> testReadUnterminatedFlowSequenceRaisesError [
+	self should: [ NeoYAMLReader fromString: '[a, b' ] raise: Error
+]
+
+{ #category : 'tests - flow' }
+NeoYAMLReaderTest >> testReadUnterminatedFlowMappingRaisesError [
+	self should: [ NeoYAMLReader fromString: '{a: 1' ] raise: Error
+]

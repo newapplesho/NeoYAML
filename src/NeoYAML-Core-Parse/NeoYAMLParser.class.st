@@ -51,8 +51,28 @@ NeoYAMLParser >> setSource: aString [
 
 { #category : 'parsing' }
 NeoYAMLParser >> parseNode [
+	| node |
+	self skipDocumentMarkers.
 	self atEnd ifTrue: [ ^ nil ].
-	^ self parseNodeAtIndent: self currentIndent
+	node := self parseNodeAtIndent: self currentIndent.
+	self skipDocumentMarkers.
+	self atEnd
+		ifFalse: [ ^ self error: 'Unexpected content after document: ' , self currentText ].
+	^ node
+]
+
+{ #category : 'private' }
+NeoYAMLParser >> skipDocumentMarkers [
+	"A single document may be wrapped in `---`/`...` document markers; skip them
+	 so parseNode reads the one document between them, while still failing loud
+	 on genuine leftover content (a second, unmarked construct)."
+	[ self atEnd not and: [ self isDocumentMarkerText: self currentText ] ]
+		whileTrue: [ self advance ]
+]
+
+{ #category : 'testing' }
+NeoYAMLParser >> isDocumentMarkerText: aText [
+	^ aText = '---' or: [ aText = '...' ]
 ]
 
 { #category : 'testing' }
@@ -119,18 +139,6 @@ NeoYAMLParser >> isCommentHashAt: i in: aLine char: char single: inSingle double
 	char = $# ifFalse: [ ^ false ].
 	(inSingle or: [ inDouble ]) ifTrue: [ ^ false ].
 	^ i = 1 or: [ (aLine at: i - 1) isSeparator ]
-]
-
-{ #category : 'private' }
-NeoYAMLParser >> trimmed: aString [
-	| start stop |
-	start := 1.
-	[ start <= aString size and: [ (aString at: start) isSeparator ] ]
-		whileTrue: [ start := start + 1 ].
-	stop := aString size.
-	[ stop >= start and: [ (aString at: stop) isSeparator ] ]
-		whileTrue: [ stop := stop - 1 ].
-	^ aString copyFrom: start to: stop
 ]
 
 { #category : 'parsing' }
@@ -294,7 +302,7 @@ NeoYAMLParser >> mappingEntryFromText: text atIndent: indent [
 	| colonIndex keyText valueText |
 	colonIndex := self topLevelColonIndexIn: text.
 	keyText := text copyFrom: 1 to: colonIndex - 1.
-	valueText := self trimmed: (text copyFrom: colonIndex + 1 to: text size).
+	valueText := (text copyFrom: colonIndex + 1 to: text size) trimBoth.
 	^ (self valueNodeFor: keyText) -> (self resolveValueNodeText: valueText atParentIndent: indent)
 ]
 
@@ -331,7 +339,7 @@ NeoYAMLParser >> hasExplicitTag: aText [
 NeoYAMLParser >> resolveTaggedValueNodeText: valueText [
 	| tagName rest node |
 	tagName := self tagNameIn: valueText.
-	rest := self trimmed: (self afterTagIn: valueText).
+	rest := (self afterTagIn: valueText) trimBoth.
 	rest isEmpty ifTrue: [ ^ self emptyNodeForTag: tagName ].
 	node := self valueNodeFor: rest.
 	node tag: tagName.
@@ -458,11 +466,11 @@ NeoYAMLParser >> parseFlowSequenceNode: aStream [
 	items := OrderedCollection new.
 	aStream next.
 	self skipFlowWhitespace: aStream.
-	aStream peek = $] ifTrue: [ aStream next. ^ NeoYAMLNode sequence: items tag: nil ].
-	[ items add: (self parseFlowValueNode: aStream).
-	  self skipFlowWhitespace: aStream.
-	  aStream peek = $, ]
-		whileTrue: [ aStream next. self skipFlowWhitespace: aStream ].
+	[ aStream atEnd not and: [ aStream peek ~= $] ] ] whileTrue: [
+		items add: (self parseFlowValueNode: aStream).
+		self skipFlowWhitespace: aStream.
+		aStream peek = $, ifTrue: [ aStream next. self skipFlowWhitespace: aStream ] ].
+	aStream atEnd ifTrue: [ ^ self error: 'Unterminated flow sequence: missing ]' ].
 	aStream next.
 	^ NeoYAMLNode sequence: items tag: nil
 ]
@@ -473,11 +481,11 @@ NeoYAMLParser >> parseFlowMappingNode: aStream [
 	entries := OrderedCollection new.
 	aStream next.
 	self skipFlowWhitespace: aStream.
-	aStream peek = $} ifTrue: [ aStream next. ^ NeoYAMLNode mapping: entries tag: nil ].
-	[ entries add: (self parseFlowEntryNodeFrom: aStream).
-	  self skipFlowWhitespace: aStream.
-	  aStream peek = $, ]
-		whileTrue: [ aStream next. self skipFlowWhitespace: aStream ].
+	[ aStream atEnd not and: [ aStream peek ~= $} ] ] whileTrue: [
+		entries add: (self parseFlowEntryNodeFrom: aStream).
+		self skipFlowWhitespace: aStream.
+		aStream peek = $, ifTrue: [ aStream next. self skipFlowWhitespace: aStream ] ].
+	aStream atEnd ifTrue: [ ^ self error: 'Unterminated flow mapping: missing }' ].
 	aStream next.
 	^ NeoYAMLNode mapping: entries tag: nil
 ]
@@ -496,7 +504,7 @@ NeoYAMLParser >> parseFlowEntryNodeFrom: aStream [
 NeoYAMLParser >> extractFlowScalarText: aStream [
 	(aStream peek = $' or: [ aStream peek = $" ])
 		ifTrue: [ ^ self extractFlowQuotedText: aStream ].
-	^ self trimmed: (self readFlowPlainText: aStream)
+	^ (self readFlowPlainText: aStream) trimBoth
 ]
 
 { #category : 'private' }
@@ -574,11 +582,13 @@ NeoYAMLParser >> appendDoubleQuoteCharAt: i in: inner to: stream [
 
 { #category : 'private' }
 NeoYAMLParser >> appendEscapeAfterBackslashAt: i in: inner to: stream [
-	| next |
-	next := inner at: i + 1.
-	next = $n ifTrue: [ stream nextPut: Character lf. ^ i + 2 ].
-	next = $" ifTrue: [ stream nextPut: $". ^ i + 2 ].
-	next = $\ ifTrue: [ stream nextPut: $\. ^ i + 2 ].
-	stream nextPut: next.
+	| escaped |
+	escaped := inner at: i + 1.
+	escaped = $n ifTrue: [ stream nextPut: Character lf. ^ i + 2 ].
+	escaped = $r ifTrue: [ stream nextPut: Character cr. ^ i + 2 ].
+	escaped = $t ifTrue: [ stream nextPut: Character tab. ^ i + 2 ].
+	escaped = $" ifTrue: [ stream nextPut: $". ^ i + 2 ].
+	escaped = $\ ifTrue: [ stream nextPut: $\. ^ i + 2 ].
+	stream nextPut: escaped.
 	^ i + 2
 ]

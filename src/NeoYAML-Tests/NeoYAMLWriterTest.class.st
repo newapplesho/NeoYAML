@@ -193,6 +193,15 @@ NeoYAMLWriterTest >> testWriteJSONRoundTripsObjectToYAMLMapping [
 	self assert: (yaml includesSubstring: 'b: true')
 ]
 
+{ #category : 'tests - json adapting' }
+NeoYAMLWriterTest >> testWriteJSONPreservesKeyOrder [
+	"JSON key order must be preserved in the YAML output (regression against
+	 a plain hash-ordered Dictionary reordering the keys)."
+	self
+		assert: (NeoYAMLWriter writeJSON: '{"z":1,"a":2,"m":3}')
+		equals: 'z: 1' , String lf , 'a: 2' , String lf , 'm: 3' , String lf
+]
+
 { #category : 'tests - errors' }
 NeoYAMLWriterTest >> testWriteUnsupportedTypeRaisesError [
 	self should: [ writer write: Object new ] raise: Error
@@ -209,10 +218,58 @@ NeoYAMLWriterTest >> testWriteAllSeparatesDocumentsWithMarker [
 	self assert: (NeoYAMLWriter writeAll: (Array with: first with: second)) equals: expected
 ]
 
+{ #category : 'tests - configuration' }
+NeoYAMLWriterTest >> testIndentSizeIsConfigurable [
+	| dict inner |
+	inner := Dictionary new.
+	inner at: 'b' put: 1.
+	dict := Dictionary new.
+	dict at: 'a' put: inner.
+	writer indentSize: 4.
+	self
+		assert: (writer write: dict)
+		equals: 'a:' , String lf , '    b: 1' , String lf
+]
+
+{ #category : 'tests - configuration' }
+NeoYAMLWriterTest >> testIndentSizeRejectsNonPositive [
+	self should: [ writer indentSize: 0 ] raise: Error.
+	self should: [ writer indentSize: -1 ] raise: Error
+]
+
 { #category : 'tests - neojson object' }
 NeoYAMLWriterTest >> testWriteNeoJSONObjectAsMapping [
 	| obj |
 	obj := NeoJSONObject new.
 	obj at: 'name' put: 'Pharo'.
 	self assert: (NeoYAMLWriter write: obj) equals: 'name: Pharo' , String lf
+]
+
+{ #category : 'tests - strings' }
+NeoYAMLWriterTest >> testWriteStringWithCarriageReturnUsesDoubleQuoteEscape [
+	"A CR cannot survive a block scalar (YAML normalizes line breaks to LF on
+	 read), so it must be written as a double-quoted \r escape, not emitted raw."
+	| input |
+	input := 'a' , (String with: Character cr) , 'b'.
+	self assert: (writer write: input) equals: '"a\rb"'
+]
+
+{ #category : 'tests - strings' }
+NeoYAMLWriterTest >> testWriteStringWithTabUsesDoubleQuoteEscape [
+	| input |
+	input := 'a' , (String with: Character lf) , (String with: Character tab) , 'b'.
+	self assert: (writer write: input) equals: '"a\n\tb"'
+]
+
+{ #category : 'tests - strings' }
+NeoYAMLWriterTest >> testWriteMappingValueWithCarriageReturnRoundTrips [
+	"Regression: a mapping value containing a CR used to be emitted raw and the
+	 text after the CR was silently dropped when read back."
+	| dict value |
+	value := 'a' , (String with: Character cr) , 'b'.
+	dict := Dictionary new.
+	dict at: 'k' put: value.
+	self
+		assert: (NeoYAMLReader fromString: (writer write: dict))
+		equals: dict
 ]
