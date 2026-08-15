@@ -48,7 +48,15 @@ NeoYAMLWriter class >> write: anObject [
 
 { #category : 'convenience' }
 NeoYAMLWriter class >> writeJSON: aJSONString [
-	^ self write: (NeoJSONReader fromString: aJSONString)
+	"Read into NeoJSONObject/NeoJSONArray rather than a plain (hash-ordered)
+	 Dictionary, so the object's field order — and therefore the YAML key
+	 order — follows the JSON text instead of being non-deterministic."
+	| reader |
+	reader := NeoJSONReader new
+		mapClass: NeoJSONObject;
+		listClass: NeoJSONArray;
+		yourself.
+	^ self write: (reader on: aJSONString readStream; next)
 ]
 
 { #category : 'convenience' }
@@ -70,6 +78,15 @@ NeoYAMLWriter >> initialize [
 { #category : 'accessing' }
 NeoYAMLWriter >> indentSize [
 	^ indentSize
+]
+
+{ #category : 'accessing' }
+NeoYAMLWriter >> indentSize: anInteger [
+	"Number of spaces per nesting level. Must be at least 1: a non-positive
+	 indent cannot represent block nesting and would produce unreadable (or
+	 unparseable) YAML."
+	anInteger < 1 ifTrue: [ ^ self error: 'indentSize must be a positive integer.' ].
+	indentSize := anInteger
 ]
 
 { #category : 'converting' }
@@ -102,6 +119,14 @@ NeoYAMLWriter >> writeMappingEntry: key value: value on: aStream indent: level [
 		nextPutAll: (self indentStringFor: level);
 		nextPutAll: (self scalarFor: key);
 		nextPutAll: ':'.
+	self writeValue: value on: aStream indent: level
+]
+
+{ #category : 'private' }
+NeoYAMLWriter >> writeValue: value on: aStream indent: level [
+	"Write a mapping-entry or sequence-item value, after the caller has already
+	 written its `key:`/`-` prefix. Shared by writeMappingEntry:value:on:indent:
+	 and writeSequenceItem:on:indent:."
 	(value isString and: [ self needsBlockScalar: value ])
 		ifTrue: [ ^ self writeBlockScalarValue: value on: aStream indent: level ].
 	(self isBlockValue: value)
@@ -126,21 +151,16 @@ NeoYAMLWriter >> writeSequenceItem: item on: aStream indent: level [
 	aStream
 		nextPutAll: (self indentStringFor: level);
 		nextPutAll: '-'.
-	(item isString and: [ self needsBlockScalar: item ])
-		ifTrue: [ ^ self writeBlockScalarValue: item on: aStream indent: level ].
-	(self isBlockValue: item)
-		ifTrue: [
-			aStream nextPut: Character lf.
-			self write: item on: aStream indent: level + 1 ]
-		ifFalse: [
-			aStream nextPutAll: ' '.
-			self write: item on: aStream indent: level.
-			aStream nextPut: Character lf ]
+	self writeValue: item on: aStream indent: level
 ]
 
 { #category : 'testing' }
 NeoYAMLWriter >> needsBlockScalar: aString [
-	^ aString includes: Character lf
+	"A carriage return cannot survive a literal block scalar: YAML normalizes
+	 all line breaks to LF on read (spec 5.4), so a CR would be lost or turned
+	 into an extra line. Such a string must go through the double-quoted form
+	 (with a \r escape) instead."
+	^ (aString includes: Character lf) and: [ (aString includes: Character cr) not ]
 ]
 
 { #category : 'private' }
@@ -161,7 +181,7 @@ NeoYAMLWriter >> blockScalarHeaderFor: aString [
 { #category : 'private' }
 NeoYAMLWriter >> writeBlockScalarLines: aString on: aStream indent: level [
 	| lines indentStr |
-	lines := self linesOf: aString.
+	lines := NeoYAMLScanner splitPreservingBlankLines: aString.
 	indentStr := self indentStringFor: level.
 	lines do: [ :line | self writeBlockScalarLine: line on: aStream indent: indentStr ]
 ]
@@ -171,22 +191,6 @@ NeoYAMLWriter >> writeBlockScalarLine: line on: aStream indent: indentStr [
 	line isEmpty
 		ifTrue: [ aStream nextPut: Character lf ]
 		ifFalse: [ aStream nextPutAll: indentStr; nextPutAll: line; nextPut: Character lf ]
-]
-
-{ #category : 'private' }
-NeoYAMLWriter >> linesOf: aString [
-	| lines start i |
-	lines := OrderedCollection new.
-	start := 1.
-	i := 1.
-	[ i <= aString size ] whileTrue: [
-		(aString at: i) = Character lf
-			ifTrue: [
-				lines add: (aString copyFrom: start to: i - 1).
-				start := i + 1 ].
-		i := i + 1 ].
-	start <= aString size ifTrue: [ lines add: (aString copyFrom: start to: aString size) ].
-	^ lines
 ]
 
 { #category : 'private' }
@@ -211,15 +215,15 @@ NeoYAMLWriter >> isBlockValue: anObject [
 NeoYAMLWriter >> scalarFor: anObject [
 	anObject ifNil: [ ^ 'null' ].
 	(anObject isKindOf: Boolean) ifTrue: [ ^ anObject printString ].
-	((anObject isKindOf: Integer) or: [ anObject isKindOf: Float ])
-		ifTrue: [ ^ anObject printString ].
+	(anObject isInteger or: [ anObject isFloat ]) ifTrue: [ ^ anObject printString ].
 	anObject isString ifTrue: [ ^ self quotedIfNeeded: anObject ].
-	^ Error signal: 'NeoYAMLWriter cannot write a ' , anObject class name , '.'
+	^ self error: 'NeoYAMLWriter cannot write a ' , anObject class name , '.'
 ]
 
 { #category : 'private' }
 NeoYAMLWriter >> quotedIfNeeded: aString [
-	(aString includes: Character lf) ifTrue: [ ^ self doubleQuoted: aString ].
+	((aString includes: Character lf) or: [ aString includes: Character cr ])
+		ifTrue: [ ^ self doubleQuoted: aString ].
 	(self needsQuoting: aString) ifFalse: [ ^ aString ].
 	^ self singleQuoted: aString
 ]
@@ -280,6 +284,8 @@ NeoYAMLWriter >> doubleQuoted: aString [
 { #category : 'private' }
 NeoYAMLWriter >> writeDoubleQuoteChar: aCharacter on: aStream [
 	aCharacter = Character lf ifTrue: [ ^ aStream nextPutAll: '\n' ].
+	aCharacter = Character cr ifTrue: [ ^ aStream nextPutAll: '\r' ].
+	aCharacter = Character tab ifTrue: [ ^ aStream nextPutAll: '\t' ].
 	aCharacter = $" ifTrue: [ ^ aStream nextPutAll: '\"' ].
 	aCharacter = $\ ifTrue: [ ^ aStream nextPutAll: '\\' ].
 	aStream nextPut: aCharacter

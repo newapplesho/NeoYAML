@@ -72,7 +72,20 @@ rather than oversights):
   content on subsequent lines, and tags on mapping keys, are not
   recognized.
 - A `---`/`...` document-separator line must be exactly that (no compact
-  `--- key: value` first-document-on-the-same-line form).
+  `--- key: value` first-document-on-the-same-line form). `fromString:`
+  tolerates such marker lines wrapping a single document (a leading `---`
+  and/or a trailing `.../---`), but a second document after a `---` is
+  rejected — use `allFromString:` for multi-document streams.
+- Text following a closed flow collection on the same line (e.g.
+  `[1, 2] extra`) is silently ignored rather than rejected. Fail-loud
+  covers leftover content on *subsequent* lines and unterminated flow
+  collections, but not trailing junk on the flow line itself.
+- A plain scalar used as a mapping key gets the same core-schema coercion
+  as a value, so `true:`, `123:`, and `1.5:` become boolean/integer/float
+  keys rather than strings. This is correct per YAML, but differs from
+  JSON/NeoJSON, where keys are always strings; it only surfaces for
+  hand-written YAML, since `NeoYAMLWriter` quotes any key that would
+  otherwise read back as a non-string.
 
 ## Explicitly out of scope
 

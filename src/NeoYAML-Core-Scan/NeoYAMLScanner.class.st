@@ -43,7 +43,7 @@ NeoYAMLScanner class >> normalizeLineBreaks: aString [
 	^ (aString copyReplaceAll: crlf with: lf) copyReplaceAll: cr with: lf
 ]
 
-{ #category : 'private' }
+{ #category : 'scanning' }
 NeoYAMLScanner class >> splitPreservingBlankLines: aString [
 	| lines start i |
 	lines := OrderedCollection new.

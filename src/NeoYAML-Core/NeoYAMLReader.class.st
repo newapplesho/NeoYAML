@@ -116,7 +116,7 @@ NeoYAMLReader class >> toJSON: aYAMLString [
 { #category : 'private' }
 NeoYAMLReader class >> splitDocuments: aString [
 	| lines docs current |
-	lines := (NeoYAMLScanner normalizeLineBreaks: aString) substrings: (String with: Character lf).
+	lines := NeoYAMLScanner splitPreservingBlankLines: (NeoYAMLScanner normalizeLineBreaks: aString).
 	docs := OrderedCollection new.
 	current := OrderedCollection new.
 	lines do: [ :line |

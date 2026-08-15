@@ -69,9 +69,9 @@ NeoYAMLConstructor class >> constructTagged: node [
 	| content |
 	content := node value.
 	node tag = 'str' ifTrue: [ ^ content ].
-	node tag = 'int' ifTrue: [ ^ Integer readFrom: content readStream ].
+	node tag = 'int' ifTrue: [ ^ Integer readFrom: (self stripLeadingPlus: content) readStream ].
 	node tag = 'float'
-		ifTrue: [ ^ Float readFrom: (self normalizeExponentCase: content) readStream ].
+		ifTrue: [ ^ Float readFrom: (self normalizeFloatText: content) readStream ].
 	node tag = 'bool' ifTrue: [ ^ content = 'true' ].
 	node tag = 'null' ifTrue: [ ^ nil ].
 	^ self constructByStyle: node
@@ -131,13 +131,30 @@ NeoYAMLConstructor class >> stripTrailingNewlines: aString [
 { #category : 'construct' }
 NeoYAMLConstructor class >> parsePlainScalar: aText [
 	aText isEmpty ifTrue: [ ^ nil ].
-	(aText = 'null' or: [ aText = '~' ]) ifTrue: [ ^ nil ].
-	aText = 'true' ifTrue: [ ^ true ].
-	aText = 'false' ifTrue: [ ^ false ].
-	(self isIntegerLiteral: aText) ifTrue: [ ^ Integer readFrom: aText readStream ].
+	(self isNullLiteral: aText) ifTrue: [ ^ nil ].
+	(self isTrueLiteral: aText) ifTrue: [ ^ true ].
+	(self isFalseLiteral: aText) ifTrue: [ ^ false ].
+	(self isIntegerLiteral: aText)
+		ifTrue: [ ^ Integer readFrom: (self stripLeadingPlus: aText) readStream ].
 	(self isFloatLiteral: aText)
-		ifTrue: [ ^ Float readFrom: (self normalizeExponentCase: aText) readStream ].
+		ifTrue: [ ^ Float readFrom: (self normalizeFloatText: aText) readStream ].
 	^ aText
+]
+
+{ #category : 'testing' }
+NeoYAMLConstructor class >> isNullLiteral: aText [
+	"YAML 1.2 core schema: null | Null | NULL | ~ (empty is handled earlier)."
+	^ #('null' 'Null' 'NULL' '~') includes: aText
+]
+
+{ #category : 'testing' }
+NeoYAMLConstructor class >> isTrueLiteral: aText [
+	^ #('true' 'True' 'TRUE') includes: aText
+]
+
+{ #category : 'testing' }
+NeoYAMLConstructor class >> isFalseLiteral: aText [
+	^ #('false' 'False' 'FALSE') includes: aText
 ]
 
 { #category : 'private' }
@@ -173,11 +190,16 @@ NeoYAMLConstructor class >> exponentIndexIn: aString [
 
 { #category : 'testing' }
 NeoYAMLConstructor class >> isDecimalMantissa: aString [
-	| dotIndex |
+	"YAML 1.2 core schema float mantissa: one side of the dot may be empty
+	 (`.5`, `5.`), but not both, and each present side must be digits."
+	| dotIndex intPart fracPart |
 	dotIndex := aString indexOf: $. .
 	dotIndex = 0 ifTrue: [ ^ false ].
-	^ (self isDigitsOnly: (aString copyFrom: 1 to: dotIndex - 1))
-		and: [ self isDigitsOnly: (aString copyFrom: dotIndex + 1 to: aString size) ]
+	intPart := aString copyFrom: 1 to: dotIndex - 1.
+	fracPart := aString copyFrom: dotIndex + 1 to: aString size.
+	(intPart isEmpty and: [ fracPart isEmpty ]) ifTrue: [ ^ false ].
+	^ (intPart isEmpty or: [ self isDigitsOnly: intPart ])
+		and: [ fracPart isEmpty or: [ self isDigitsOnly: fracPart ] ]
 ]
 
 { #category : 'testing' }
@@ -197,5 +219,38 @@ NeoYAMLConstructor class >> isDigitsOnly: aString [
 
 { #category : 'private' }
 NeoYAMLConstructor class >> stripSign: aText [
-	^ (aText first = $-) ifTrue: [ aText allButFirst ] ifFalse: [ aText ]
+	"Drop a leading sign for the digit-shape predicates. The core schema allows
+	 both `-` and `+` (e.g. `+5`, `1e+3`)."
+	(aText notEmpty and: [ aText first = $- or: [ aText first = $+ ] ])
+		ifTrue: [ ^ aText allButFirst ].
+	^ aText
+]
+
+{ #category : 'private' }
+NeoYAMLConstructor class >> stripLeadingPlus: aText [
+	"Integer readFrom: rejects a leading `+`, so remove it before parsing.
+	 A leading `-` is kept, since readFrom: handles it."
+	(aText notEmpty and: [ aText first = $+ ]) ifTrue: [ ^ aText allButFirst ].
+	^ aText
+]
+
+{ #category : 'private' }
+NeoYAMLConstructor class >> normalizeFloatText: aText [
+	"Rewrite a core-schema float into the exact form Float readFrom: accepts:
+	 lowercase exponent, no leading `+`, and a `0` before a bare leading dot
+	 (`.5` -> `0.5`), preserving a leading `-`."
+	| text sign |
+	text := self normalizeExponentCase: aText.
+	"Float readFrom: rejects an explicit `+` in the exponent (e.g. `1e+3`)."
+	text := text copyReplaceAll: 'e+' with: 'e'.
+	"...and stops at a bare dot before the exponent (`5.e3`), losing the
+	 exponent, so give it an explicit fractional digit."
+	text := text copyReplaceAll: '.e' with: '.0e'.
+	sign := ''.
+	(text notEmpty and: [ text first = $+ or: [ text first = $- ] ])
+		ifTrue: [
+			text first = $- ifTrue: [ sign := '-' ].
+			text := text allButFirst ].
+	(text notEmpty and: [ text first = $. ]) ifTrue: [ text := '0' , text ].
+	^ sign , text
 ]
